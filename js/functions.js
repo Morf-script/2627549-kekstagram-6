@@ -38,3 +38,7 @@ function extractNumber(input) {
   }
   return Number(digits);
 }
+
+window.isWithinLength = isWithinLength;
+window.isPalindrome = isPalindrome;
+window.extractNumber = extractNumber;
