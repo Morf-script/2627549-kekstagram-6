@@ -1,119 +1,130 @@
-import noUiSlider from 'nouislider';
-import 'nouislider/dist/nouislider.css';
-
-const effectLevelSlider = document.querySelector('.effect-level__slider');
-const effectLevelValue = document.querySelector('.effect-level__value');
-const effectLevel = document.querySelector('.effect-level');
-const imgPreview = document.querySelector('.img-upload__preview img');
-const effectsRadios = document.querySelectorAll('.effects__radio');
-
-const EFFECTS = {
-  none: {
+const EFFECTS = [
+  {
+    name: 'none',
+    style: 'none',
     min: 0,
     max: 100,
     step: 1,
-    filter: 'none',
+    unit: '',
   },
-  chrome: {
+  {
+    name: 'chrome',
+    style: 'grayscale',
     min: 0,
     max: 1,
     step: 0.1,
-    filter: 'grayscale',
+    unit: '',
   },
-  sepia: {
+  {
+    name: 'sepia',
+    style: 'sepia',
     min: 0,
     max: 1,
     step: 0.1,
-    filter: 'sepia',
+    unit: '',
   },
-  marvin: {
+  {
+    name: 'marvin',
+    style: 'invert',
     min: 0,
     max: 100,
     step: 1,
-    filter: 'invert',
     unit: '%',
   },
-  phobos: {
+  {
+    name: 'phobos',
+    style: 'blur',
     min: 0,
     max: 3,
     step: 0.1,
-    filter: 'blur',
     unit: 'px',
   },
-  heat: {
+  {
+    name: 'heat',
+    style: 'brightness',
     min: 1,
     max: 3,
     step: 0.1,
-    filter: 'brightness',
+    unit: '',
   },
+];
+
+const DEFAULT_EFFECT = EFFECTS[0];
+let chosenEffect = DEFAULT_EFFECT;
+
+const imageElement = document.querySelector('.img-upload__preview img');
+const effectsElement = document.querySelector('.effects');
+const sliderElement = document.querySelector('.effect-level__slider');
+const sliderContainerElement = document.querySelector('.effect-level');
+const effectLevelElement = document.querySelector('.effect-level__value');
+
+const isDefault = () => chosenEffect === DEFAULT_EFFECT;
+
+const showSlider = () => {
+  sliderContainerElement.classList.remove('hidden');
 };
 
-let currentEffect = 'none';
-let slider = null;
+const hideSlider = () => {
+  sliderContainerElement.classList.add('hidden');
+};
 
-function createSlider() {
-  if (slider) {
-    slider.destroy();
+const updateSlider = () => {
+  sliderElement.noUiSlider.updateOptions({
+    range: {
+      min: chosenEffect.min,
+      max: chosenEffect.max,
+    },
+    start: chosenEffect.max,
+    step: chosenEffect.step,
+  });
+
+  if (isDefault()) {
+    hideSlider();
+  } else {
+    showSlider();
   }
+};
 
-  const effect = EFFECTS[currentEffect];
+const onSliderUpdate = () => {
+  const sliderValue = sliderElement.noUiSlider.get();
+  if (isDefault()) {
+    imageElement.style.filter = DEFAULT_EFFECT.style;
+  } else {
+    imageElement.style.filter = `${chosenEffect.style}(${sliderValue}${chosenEffect.unit})`;
+  }
+  effectLevelElement.value = parseFloat(sliderValue);
+};
 
-  if (currentEffect === 'none') {
-    effectLevel.classList.add('hidden');
-    imgPreview.style.filter = 'none';
-    effectLevelValue.value = '';
+const onEffectsChange = (evt) => {
+  if (!evt.target.classList.contains('effects__radio')) {
     return;
   }
+  chosenEffect = EFFECTS.find((effect) => effect.name === evt.target.value);
+  imageElement.className = `effects__preview--${chosenEffect.name}`;
+  updateSlider();
+  onSliderUpdate();
+};
 
-  effectLevel.classList.remove('hidden');
+const resetEffects = () => {
+  chosenEffect = DEFAULT_EFFECT;
+  updateSlider();
+};
 
-  slider = noUiSlider.create(effectLevelSlider, {
-    start: effect.max,
+const initEffects = () => {
+  noUiSlider.create(sliderElement, {
     range: {
-      min: effect.min,
-      max: effect.max,
+      min: DEFAULT_EFFECT.min,
+      max: DEFAULT_EFFECT.max,
     },
-    step: effect.step,
+    start: DEFAULT_EFFECT.max,
+    step: DEFAULT_EFFECT.step,
     connect: 'lower',
   });
+  hideSlider();
 
-  slider.on('update', (values) => {
-    const value = values[0];
-    effectLevelValue.value = value;
-    applyEffect(value);
-  });
-}
+  effectsElement.addEventListener('change', onEffectsChange);
+  sliderElement.noUiSlider.on('update', onSliderUpdate);
+};
 
-function applyEffect(value) {
-  const effect = EFFECTS[currentEffect];
-  let filterValue = '';
-
-  if (effect.unit) {
-    filterValue = `${effect.filter}(${value}${effect.unit})`;
-  } else {
-    filterValue = `${effect.filter}(${value})`;
-  }
-
-  imgPreview.style.filter = filterValue;
-}
-
-effectsRadios.forEach((radio) => {
-  radio.addEventListener('change', () => {
-    if (radio.checked) {
-      currentEffect = radio.value;
-      createSlider();
-    }
-  });
-});
-
-export function resetEffects() {
-  const noneRadio = document.querySelector('#effect-none');
-  if (noneRadio) {
-    noneRadio.checked = true;
-  }
-  currentEffect = 'none';
-  createSlider();
-}
-
-createSlider();
+export { resetEffects, initEffects };
 

@@ -1,26 +1,32 @@
-import { getPhotos } from './api.js';
-import { renderPhotos } from './renderPhotos.js';
-import { initBigPictureHandlers } from './bigPicture.js';
 import { initUploadForm } from './formUpload.js';
+import { renderPhotos } from './renderPhotos.js';
+import { getData } from './api.js';
+import { showAlert } from './util.js';
 import { initFilters } from './filters.js';
-import 'nouislider/dist/nouislider.css';
-import './imageScale.js';
-import './imageEffects.js';
 
-async function loadPhotos() {
-  try {
-    const photosData = await getPhotos();
-    renderPhotos(photosData);
-    initBigPictureHandlers();
-    initFilters(photosData);
-  } catch (error) {
-    const picturesContainer = document.querySelector('.pictures');
-    const errorMessage = document.createElement('div');
-    errorMessage.style.cssText = 'text-align: center; padding: 20px; color: red; font-size: 18px;';
-    errorMessage.textContent = `Ошибка загрузки фотографий: ${error.message}`;
-    picturesContainer.appendChild(errorMessage);
+function initializeApp() {
+  if (typeof window.Pristine !== 'function') {
+    setTimeout(initializeApp, 100);
+    return;
   }
+
+  getData(
+    (photos) => {
+      renderPhotos(photos);
+      initFilters(photos);
+    },
+    () => {
+      showAlert('Не удалось загрузить данные. Попробуйте обновить страницу');
+    }
+  );
+
+  initUploadForm();
 }
 
-loadPhotos();
-initUploadForm();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initializeApp, 0);
+  });
+} else {
+  setTimeout(initializeApp, 0);
+}

@@ -1,82 +1,65 @@
-import { debounce } from './util.js';
 import { renderPhotos } from './renderPhotos.js';
-import { initBigPictureHandlers } from './bigPicture.js';
+import { debounce } from './util.js';
 
 const RANDOM_PHOTOS_COUNT = 10;
-const DEBOUNCE_DELAY = 500;
+const RERENDER_DELAY = 500;
 
-let photosData = [];
+const filtersElement = document.querySelector('.img-filters');
+const filtersFormElement = filtersElement.querySelector('.img-filters__form');
 
-function getDefaultPhotos() {
-  return photosData;
-}
+const FilterType = {
+  DEFAULT: 'filter-default',
+  RANDOM: 'filter-random',
+  DISCUSSED: 'filter-discussed',
+};
 
-function getRandomPhotos() {
-  const shuffled = [...photosData].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, RANDOM_PHOTOS_COUNT);
-}
+let currentFilter = FilterType.DEFAULT;
+let pictures = [];
 
-function getDiscussedPhotos() {
-  return [...photosData].sort((a, b) => b.comments.length - a.comments.length);
-}
+const sortRandomly = () => Math.random() - 0.5;
 
-function clearPhotos() {
-  const picturesContainer = document.querySelector('.pictures');
-  const pictures = picturesContainer.querySelectorAll('.picture');
-  pictures.forEach((picture) => picture.remove());
-}
+const sortByComments = (photoA, photoB) => photoB.comments.length - photoA.comments.length;
 
-function applyFilter(filterType) {
-  clearPhotos();
-
-  let filteredPhotos;
-  switch (filterType) {
-    case 'random':
-      filteredPhotos = getRandomPhotos();
-      break;
-    case 'discussed':
-      filteredPhotos = getDiscussedPhotos();
-      break;
+const getFilteredPictures = () => {
+  switch (currentFilter) {
+    case FilterType.RANDOM:
+      return [...pictures].sort(sortRandomly).slice(0, RANDOM_PHOTOS_COUNT);
+    case FilterType.DISCUSSED:
+      return [...pictures].sort(sortByComments);
     default:
-      filteredPhotos = getDefaultPhotos();
+      return [...pictures];
+  }
+};
+
+const updateActiveButton = (clickedButton) => {
+  const currentActiveButton = filtersFormElement.querySelector('.img-filters__button--active');
+  if (currentActiveButton) {
+    currentActiveButton.classList.remove('img-filters__button--active');
+  }
+  clickedButton.classList.add('img-filters__button--active');
+};
+
+const debouncedRender = debounce((filteredPictures) => {
+  renderPhotos(filteredPictures);
+}, RERENDER_DELAY);
+
+const onFilterClick = (evt) => {
+  const clickedButton = evt.target;
+  if (!clickedButton.classList.contains('img-filters__button')) {
+    return;
   }
 
-  renderPhotos(filteredPhotos);
-  initBigPictureHandlers();
-}
+  if (clickedButton.id === currentFilter) {
+    return;
+  }
 
-const debouncedApplyFilter = debounce(applyFilter, DEBOUNCE_DELAY);
+  currentFilter = clickedButton.id;
+  updateActiveButton(clickedButton);
+  debouncedRender(getFilteredPictures());
+};
 
-function setActiveButton(activeButton) {
-  const buttons = document.querySelectorAll('.img-filters__button');
-  buttons.forEach((button) => {
-    button.classList.remove('img-filters__button--active');
-  });
-  activeButton.classList.add('img-filters__button--active');
-}
-
-export function initFilters(photos) {
-  photosData = photos;
-
-  const filtersContainer = document.querySelector('.img-filters');
-  filtersContainer.classList.remove('img-filters--inactive');
-
-  const filterDefault = document.querySelector('#filter-default');
-  const filterRandom = document.querySelector('#filter-random');
-  const filterDiscussed = document.querySelector('#filter-discussed');
-
-  filterDefault.addEventListener('click', () => {
-    setActiveButton(filterDefault);
-    debouncedApplyFilter('default');
-  });
-
-  filterRandom.addEventListener('click', () => {
-    setActiveButton(filterRandom);
-    debouncedApplyFilter('random');
-  });
-
-  filterDiscussed.addEventListener('click', () => {
-    setActiveButton(filterDiscussed);
-    debouncedApplyFilter('discussed');
-  });
-}
+export const initFilters = (loadedPictures) => {
+  pictures = loadedPictures;
+  filtersElement.classList.remove('img-filters--inactive');
+  filtersFormElement.addEventListener('click', onFilterClick);
+};

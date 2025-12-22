@@ -1,7 +1,8 @@
-import { pristine } from './formValidation.js';
-import { uploadPhoto } from './api.js';
-import { resetScale } from './imageScale.js';
-import { resetEffects } from './imageEffects.js';
+import { pristine, initFormValidation } from './formValidation.js';
+import { sendData } from './api.js';
+import { resetScale, initScale } from './imageScale.js';
+import { resetEffects, initEffects } from './imageEffects.js';
+import { isEscapeKey } from './util.js';
 
 const uploadInput = document.querySelector('#upload-file');
 const uploadOverlay = document.querySelector('.img-upload__overlay');
@@ -16,6 +17,8 @@ const imgPreview = document.querySelector('.img-upload__preview img');
 
 const FILE_TYPES = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
+let currentImageUrl = null;
+
 function loadImage(file) {
   const fileName = file.name.toLowerCase();
   const matches = FILE_TYPES.some((type) => fileName.endsWith(type));
@@ -24,47 +27,99 @@ function loadImage(file) {
     return;
   }
 
-  const reader = new FileReader();
+  if (currentImageUrl) {
+    URL.revokeObjectURL(currentImageUrl);
+  }
 
-  reader.addEventListener('load', () => {
-    imgPreview.src = reader.result;
+  currentImageUrl = URL.createObjectURL(file);
+  imgPreview.src = currentImageUrl;
+  const effectPreviews = document.querySelectorAll('.effects__preview');
+  effectPreviews.forEach((preview) => {
+    preview.style.backgroundImage = `url(${currentImageUrl})`;
   });
-
-  reader.readAsDataURL(file);
 }
 
 function openUploadForm() {
+  if (!uploadOverlay || !uploadCancel) {
+    return;
+  }
+
   uploadOverlay.classList.remove('hidden');
   document.body.classList.add('modal-open');
+  document.addEventListener('keydown', onFormEscKeydown);
+  uploadCancel.addEventListener('click', closeUploadForm);
+  resetScale();
 }
 
 function closeUploadForm() {
-  uploadOverlay.classList.add('hidden');
-  document.body.classList.remove('modal-open');
   uploadForm.reset();
-  uploadInput.value = '';
-  imgPreview.src = 'img/upload-default-image.jpg';
+  if (pristine) {
+    pristine.reset();
+  }
   resetScale();
   resetEffects();
-  pristine.reset();
-  hideMessage();
+  uploadOverlay.classList.add('hidden');
+  document.body.classList.remove('modal-open');
+  uploadInput.value = '';
+  imgPreview.src = 'img/upload-default-image.jpg';
+  const effectPreviews = document.querySelectorAll('.effects__preview');
+  effectPreviews.forEach((preview) => {
+    preview.style.backgroundImage = '';
+  });
+  if (currentImageUrl) {
+    URL.revokeObjectURL(currentImageUrl);
+    currentImageUrl = null;
+  }
+
+  document.removeEventListener('keydown', onFormEscKeydown);
+  uploadCancel.removeEventListener('click', closeUploadForm);
+}
+
+function onFormEscKeydown(evt) {
+  if (document.activeElement === hashtagsInput || document.activeElement === descriptionInput) {
+    return;
+  }
+
+  if (document.querySelector('.error')) {
+    return;
+  }
+
+  if (isEscapeKey(evt)) {
+    evt.preventDefault();
+    closeUploadForm();
+  }
 }
 
 function showMessage(template) {
-  const message = template.content.cloneNode(true);
-  const messageElement = message.querySelector('section');
-  document.body.appendChild(messageElement);
+  hideMessage();
+  const messageElement = template.content.cloneNode(true).querySelector('section');
+  const button = messageElement.querySelector('button');
 
-  const closeButton = messageElement.querySelector('button');
-  closeButton.addEventListener('click', () => {
+  document.body.append(messageElement);
+
+  const closeMessage = () => {
     messageElement.remove();
-  });
+    document.removeEventListener('keydown', onMessageEscKeydown);
+    document.removeEventListener('click', onOutsideClick);
+  };
 
-  document.addEventListener('keydown', (evt) => {
-    if (evt.key === 'Escape') {
-      messageElement.remove();
+  function onMessageEscKeydown(evt) {
+    if (isEscapeKey(evt)) {
+      evt.preventDefault();
+      evt.stopPropagation();
+      closeMessage();
     }
-  }, { once: true });
+  }
+
+  function onOutsideClick(evt) {
+    if (evt.target === messageElement) {
+      closeMessage();
+    }
+  }
+
+  button.addEventListener('click', closeMessage);
+  document.addEventListener('keydown', onMessageEscKeydown);
+  document.addEventListener('click', onOutsideClick);
 }
 
 function hideMessage() {
@@ -74,71 +129,77 @@ function hideMessage() {
   }
 }
 
-async function handleFormSubmit(evt) {
+const blockSubmitButton = () => {
+  if (uploadSubmit) {
+    uploadSubmit.disabled = true;
+    uploadSubmit.textContent = 'Публикую...';
+  }
+};
+
+const unblockSubmitButton = () => {
+  if (uploadSubmit) {
+    uploadSubmit.disabled = false;
+    uploadSubmit.textContent = 'Опубликовать';
+  }
+};
+
+function handleFormSubmit(evt) {
   evt.preventDefault();
+
+  if (!pristine) {
+    return;
+  }
 
   const isValid = pristine.validate();
   if (!isValid) {
     return;
   }
 
-  uploadSubmit.disabled = true;
-  const submitText = uploadSubmit.textContent;
-  uploadSubmit.textContent = 'Отправка...';
-
-  try {
-    const formData = new FormData(uploadForm);
-    await uploadPhoto(formData);
-    closeUploadForm();
-    showMessage(successTemplate);
-  } catch (error) {
-    showMessage(errorTemplate);
-  } finally {
-    uploadSubmit.disabled = false;
-    uploadSubmit.textContent = submitText;
-  }
+  blockSubmitButton();
+  sendData(
+    () => {
+      closeUploadForm();
+      showMessage(successTemplate);
+      unblockSubmitButton();
+    },
+    () => {
+      showMessage(errorTemplate);
+      unblockSubmitButton();
+    },
+    new FormData(evt.target)
+  );
 }
 
 export function initUploadForm() {
-  uploadInput.addEventListener('change', () => {
-    const file = uploadInput.files[0];
-    if (file) {
-      loadImage(file);
-      openUploadForm();
-    }
-  });
+  if (!uploadForm || !uploadInput) {
+    return;
+  }
 
-  uploadCancel.addEventListener('click', () => {
-    closeUploadForm();
-  });
+  initFormValidation();
 
-  uploadForm.addEventListener('submit', handleFormSubmit);
-
-  uploadForm.addEventListener('reset', () => {
-    resetScale();
-    resetEffects();
-    pristine.reset();
-  });
-
-  document.addEventListener('keydown', (evt) => {
-    if (evt.key === 'Escape' && !uploadOverlay.classList.contains('hidden')) {
-      const activeElement = document.activeElement;
-      if (activeElement !== hashtagsInput && activeElement !== descriptionInput) {
-        closeUploadForm();
-      }
-    }
-  });
+  uploadInput.addEventListener('change', onFileFieldChange);
 
   hashtagsInput.addEventListener('keydown', (evt) => {
-    if (evt.key === 'Escape') {
+    if (isEscapeKey(evt)) {
       evt.stopPropagation();
     }
   });
 
   descriptionInput.addEventListener('keydown', (evt) => {
-    if (evt.key === 'Escape') {
+    if (isEscapeKey(evt)) {
       evt.stopPropagation();
     }
   });
+
+  initScale();
+  initEffects();
+  uploadForm.addEventListener('submit', handleFormSubmit);
 }
 
+function onFileFieldChange() {
+  const file = uploadInput.files[0];
+  if (file) {
+    loadImage(file);
+    openUploadForm();
+  }
+}

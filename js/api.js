@@ -1,29 +1,36 @@
-const API_URL = 'https://26.javascript.pages.academy/kekstagram';
+const SERVER_URL = 'https://29.javascript.htmlacademy.pro/kekstagram';
 
-export async function getPhotos() {
-  try {
-    const response = await fetch(`${API_URL}/data`);
-    if (!response.ok) {
-      throw new Error(`Ошибка загрузки данных: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    throw new Error(`Не удалось загрузить фотографии: ${error.message}`);
-  }
-}
-
-export async function uploadPhoto(formData) {
-  try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData,
+function getData(onSuccess, onFail) {
+  fetch(`${SERVER_URL}/data`)
+    .then((response) => {
+      if (response.ok) {
+        return response.json();
+      }
+      throw new Error(`${response.status} ${response.statusText}`);
+    })
+    .then((data) => {
+      onSuccess(data);
+    })
+    .catch(() => {
+      onFail();
     });
-    if (!response.ok) {
-      throw new Error(`Ошибка отправки данных: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    throw new Error(`Не удалось отправить фотографию: ${error.message}`);
-  }
 }
 
+function sendData(onSuccess, onFail, body) {
+  fetch(`${SERVER_URL}/`, {
+    method: 'POST',
+    body,
+  })
+    .then((response) => {
+      if (response.ok) {
+        onSuccess();
+      } else {
+        onFail();
+      }
+    })
+    .catch(() => {
+      onFail();
+    });
+}
+
+export { getData, sendData };
