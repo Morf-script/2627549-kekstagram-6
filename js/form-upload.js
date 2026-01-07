@@ -1,7 +1,7 @@
-import { pristine, initFormValidation } from './formValidation.js';
+import { pristine, initFormValidation } from './form-validation.js';
 import { sendData } from './api.js';
-import { resetScale, initScale } from './imageScale.js';
-import { resetEffects, initEffects } from './imageEffects.js';
+import { resetScale, initScale } from './image-scale.js';
+import { resetEffects, initEffects } from './image-effects.js';
 import { isEscapeKey } from './util.js';
 
 const uploadInput = document.querySelector('#upload-file');
@@ -14,12 +14,20 @@ const uploadSubmit = document.querySelector('#upload-submit');
 const successTemplate = document.querySelector('#success');
 const errorTemplate = document.querySelector('#error');
 const imgPreview = document.querySelector('.img-upload__preview img');
+const effectPreviewsElements = document.querySelectorAll('.effects__preview');
 
 const FILE_TYPES = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
 let currentImageUrl = null;
 
-function loadImage(file) {
+const hideMessage = () => {
+  const existingMessage = document.querySelector('.success, .error');
+  if (existingMessage) {
+    existingMessage.remove();
+  }
+};
+
+const loadImage = (file) => {
   const fileName = file.name.toLowerCase();
   const matches = FILE_TYPES.some((type) => fileName.endsWith(type));
 
@@ -33,25 +41,14 @@ function loadImage(file) {
 
   currentImageUrl = URL.createObjectURL(file);
   imgPreview.src = currentImageUrl;
-  const effectPreviews = document.querySelectorAll('.effects__preview');
-  effectPreviews.forEach((preview) => {
+  effectPreviewsElements.forEach((preview) => {
     preview.style.backgroundImage = `url(${currentImageUrl})`;
   });
-}
+};
 
-function openUploadForm() {
-  if (!uploadOverlay || !uploadCancel) {
-    return;
-  }
+let onFormEscKeydown = null;
 
-  uploadOverlay.classList.remove('hidden');
-  document.body.classList.add('modal-open');
-  document.addEventListener('keydown', onFormEscKeydown);
-  uploadCancel.addEventListener('click', closeUploadForm);
-  resetScale();
-}
-
-function closeUploadForm() {
+const closeUploadForm = () => {
   uploadForm.reset();
   if (pristine) {
     pristine.reset();
@@ -62,8 +59,7 @@ function closeUploadForm() {
   document.body.classList.remove('modal-open');
   uploadInput.value = '';
   imgPreview.src = 'img/upload-default-image.jpg';
-  const effectPreviews = document.querySelectorAll('.effects__preview');
-  effectPreviews.forEach((preview) => {
+  effectPreviewsElements.forEach((preview) => {
     preview.style.backgroundImage = '';
   });
   if (currentImageUrl) {
@@ -71,16 +67,17 @@ function closeUploadForm() {
     currentImageUrl = null;
   }
 
-  document.removeEventListener('keydown', onFormEscKeydown);
-  uploadCancel.removeEventListener('click', closeUploadForm);
-}
-
-function onFormEscKeydown(evt) {
-  if (document.activeElement === hashtagsInput || document.activeElement === descriptionInput) {
-    return;
+  if (onFormEscKeydown) {
+    document.removeEventListener('keydown', onFormEscKeydown);
   }
+  uploadCancel.removeEventListener('click', closeUploadForm);
+};
 
-  if (document.querySelector('.error')) {
+onFormEscKeydown = (evt) => {
+  const isInputFocused = document.activeElement === hashtagsInput || document.activeElement === descriptionInput;
+  const hasError = document.querySelector('.error');
+
+  if (isInputFocused || hasError) {
     return;
   }
 
@@ -88,46 +85,57 @@ function onFormEscKeydown(evt) {
     evt.preventDefault();
     closeUploadForm();
   }
-}
+};
 
-function showMessage(template) {
+const openUploadForm = () => {
+  if (!uploadOverlay || !uploadCancel) {
+    return;
+  }
+
+  uploadOverlay.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+  document.addEventListener('keydown', onFormEscKeydown);
+  uploadCancel.addEventListener('click', closeUploadForm);
+  resetScale();
+};
+
+const showMessage = (template) => {
   hideMessage();
   const messageElement = template.content.cloneNode(true).querySelector('section');
   const button = messageElement.querySelector('button');
 
   document.body.append(messageElement);
 
-  const closeMessage = () => {
+  let closeMessage = null;
+
+  const onMessageEscKeydown = (evt) => {
+    if (isEscapeKey(evt)) {
+      evt.preventDefault();
+      evt.stopPropagation();
+      if (closeMessage) {
+        closeMessage();
+      }
+    }
+  };
+
+  const onOutsideClick = (evt) => {
+    if (evt.target === messageElement) {
+      if (closeMessage) {
+        closeMessage();
+      }
+    }
+  };
+
+  closeMessage = () => {
     messageElement.remove();
     document.removeEventListener('keydown', onMessageEscKeydown);
     document.removeEventListener('click', onOutsideClick);
   };
 
-  function onMessageEscKeydown(evt) {
-    if (isEscapeKey(evt)) {
-      evt.preventDefault();
-      evt.stopPropagation();
-      closeMessage();
-    }
-  }
-
-  function onOutsideClick(evt) {
-    if (evt.target === messageElement) {
-      closeMessage();
-    }
-  }
-
   button.addEventListener('click', closeMessage);
   document.addEventListener('keydown', onMessageEscKeydown);
   document.addEventListener('click', onOutsideClick);
-}
-
-function hideMessage() {
-  const existingMessage = document.querySelector('.success, .error');
-  if (existingMessage) {
-    existingMessage.remove();
-  }
-}
+};
 
 const blockSubmitButton = () => {
   if (uploadSubmit) {
@@ -143,7 +151,7 @@ const unblockSubmitButton = () => {
   }
 };
 
-function handleFormSubmit(evt) {
+const handleFormSubmit = (evt) => {
   evt.preventDefault();
 
   if (!pristine) {
@@ -168,9 +176,17 @@ function handleFormSubmit(evt) {
     },
     new FormData(evt.target)
   );
-}
+};
 
-export function initUploadForm() {
+const onFileFieldChange = () => {
+  const file = uploadInput.files[0];
+  if (file) {
+    loadImage(file);
+    openUploadForm();
+  }
+};
+
+export const initUploadForm = () => {
   if (!uploadForm || !uploadInput) {
     return;
   }
@@ -194,12 +210,4 @@ export function initUploadForm() {
   initScale();
   initEffects();
   uploadForm.addEventListener('submit', handleFormSubmit);
-}
-
-function onFileFieldChange() {
-  const file = uploadInput.files[0];
-  if (file) {
-    loadImage(file);
-    openUploadForm();
-  }
-}
+};

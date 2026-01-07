@@ -1,6 +1,6 @@
 const SERVER_URL = 'https://29.javascript.htmlacademy.pro/kekstagram';
 
-function getData(onSuccess, onFail) {
+const getData = (onSuccess, onFail) => {
   fetch(`${SERVER_URL}/data`)
     .then((response) => {
       if (response.ok) {
@@ -14,9 +14,9 @@ function getData(onSuccess, onFail) {
     .catch(() => {
       onFail();
     });
-}
+};
 
-function sendData(onSuccess, onFail, body) {
+const sendData = (onSuccess, onFail, body) => {
   fetch(`${SERVER_URL}/`, {
     method: 'POST',
     body,
@@ -31,6 +31,6 @@ function sendData(onSuccess, onFail, body) {
     .catch(() => {
       onFail();
     });
-}
+};
 
 export { getData, sendData };

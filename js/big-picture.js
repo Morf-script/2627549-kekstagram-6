@@ -34,9 +34,30 @@ const createCommentElement = (comment) => {
   return commentElement;
 };
 
+let onEscKeyDown = null;
+
+const closeBigPicture = () => {
+  bigPictureElement.classList.add('hidden');
+  bodyElement.classList.remove('modal-open');
+
+  if (onEscKeyDown) {
+    document.removeEventListener('keydown', onEscKeyDown);
+  }
+
+  currentComments = [];
+  displayedComments = 0;
+};
+
+onEscKeyDown = (evt) => {
+  if (evt.key === 'Escape') {
+    closeBigPicture();
+  }
+};
+
 const renderCommentsPortion = (initial = false) => {
   if (initial) {
-    commentsContainer.innerHTML = '';
+    const existingComments = commentsContainer.querySelectorAll('.social__comment');
+    existingComments.forEach((comment) => comment.remove());
     displayedComments = 0;
   }
 
@@ -51,30 +72,15 @@ const renderCommentsPortion = (initial = false) => {
   commentsContainer.appendChild(fragment);
   displayedComments = commentsToShow;
 
-  commentCountElement.innerHTML = `<span class="social__comment-shown-count">${displayedComments}</span> из <span class="social__comment-total-count">${currentComments.length}</span> комментариев`;
-
-  if (displayedComments >= currentComments.length) {
-    commentsLoaderElement.classList.add('hidden');
-  } else {
-    commentsLoaderElement.classList.remove('hidden');
+  const shownCountElement = commentCountElement.querySelector('.social__comment-shown-count');
+  const totalCountElement = commentCountElement.querySelector('.social__comment-total-count');
+  if (shownCountElement && totalCountElement) {
+    shownCountElement.textContent = displayedComments;
+    totalCountElement.textContent = currentComments.length;
   }
+
+  commentsLoaderElement.classList.toggle('hidden', displayedComments >= currentComments.length);
 };
-
-function onEscKeyDown(evt) {
-  if (evt.key === 'Escape') {
-    closeBigPicture();
-  }
-}
-
-function closeBigPicture() {
-  bigPictureElement.classList.add('hidden');
-  bodyElement.classList.remove('modal-open');
-
-  document.removeEventListener('keydown', onEscKeyDown);
-
-  currentComments = [];
-  displayedComments = 0;
-}
 
 const openBigPicture = (photo) => {
   bigPictureImg.src = photo.url;

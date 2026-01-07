@@ -1,9 +1,9 @@
-import { openBigPicture } from './bigPicture.js';
+import { openBigPicture } from './big-picture.js';
 
 const picturesContainer = document.querySelector('.pictures');
 const pictureTemplate = document.querySelector('#picture').content.querySelector('.picture');
 
-function createThumbnail(photo) {
+const createThumbnail = (photo) => {
   const pictureElement = pictureTemplate.cloneNode(true);
 
   const img = pictureElement.querySelector('.picture__img');
@@ -19,9 +19,9 @@ function createThumbnail(photo) {
   });
 
   return pictureElement;
-}
+};
 
-function renderPhotos(photos) {
+const renderPhotos = (photos) => {
   const pictures = picturesContainer.querySelectorAll('.picture');
   pictures.forEach((picture) => picture.remove());
 
@@ -33,6 +33,6 @@ function renderPhotos(photos) {
   });
 
   picturesContainer.appendChild(fragment);
-}
+};
 
 export { renderPhotos };

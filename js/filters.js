@@ -1,4 +1,4 @@
-import { renderPhotos } from './renderPhotos.js';
+import { renderPhotos } from './render-photos.js';
 import { debounce } from './util.js';
 
 const RANDOM_PHOTOS_COUNT = 10;

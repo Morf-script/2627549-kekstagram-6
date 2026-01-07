@@ -1,10 +1,10 @@
-import { initUploadForm } from './formUpload.js';
-import { renderPhotos } from './renderPhotos.js';
+import { initUploadForm } from './form-upload.js';
+import { renderPhotos } from './render-photos.js';
 import { getData } from './api.js';
 import { showAlert } from './util.js';
 import { initFilters } from './filters.js';
 
-function initializeApp() {
+const initializeApp = () => {
   if (typeof window.Pristine !== 'function') {
     setTimeout(initializeApp, 100);
     return;
@@ -21,7 +21,7 @@ function initializeApp() {
   );
 
   initUploadForm();
-}
+};
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {

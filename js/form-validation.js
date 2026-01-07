@@ -8,42 +8,37 @@ const descriptionInput = document.querySelector('.text__description');
 
 let pristine = null;
 
-const validateHashtagsCount = (value) => {
+const getHashtags = (value) => {
   if (!value) {
-    return true;
+    return [];
   }
-  const hashtags = value.trim().split(/\s+/).filter((item) => item.length > 0);
+  return value.trim().split(/\s+/).filter((item) => item.length > 0);
+};
+
+const validateHashtagsCount = (value) => {
+  const hashtags = getHashtags(value);
   return hashtags.length <= MAX_HASHTAGS_COUNT;
 };
 
 const validateHashtagsFormat = (value) => {
-  if (!value) {
-    return true;
-  }
-  const hashtags = value.trim().split(/\s+/).filter((item) => item.length > 0);
+  const hashtags = getHashtags(value);
   return !hashtags.some((hashtag) => !VALID_HASHTAG_REGEX.test(hashtag));
 };
 
 const validateNonEmptyHashtag = (value) => {
-  if (!value) {
-    return true;
-  }
-  const hashtags = value.trim().split(/\s+/).filter((item) => item.length > 0);
+  const hashtags = getHashtags(value);
   return !hashtags.some((hashtag) => hashtag === '#');
 };
 
 const validateHashtagsUnique = (value) => {
-  if (!value) {
-    return true;
-  }
-  const hashtags = value.trim().split(/\s+/).filter((item) => item.length > 0);
+  const hashtags = getHashtags(value);
   const uniqueHashtags = new Set(hashtags.map((hashtag) => hashtag.toLowerCase()));
   return uniqueHashtags.size === hashtags.length;
 };
 
 const validateComment = (value) => !value || value.length <= MAX_COMMENT_LENGTH;
 
-function initFormValidation() {
+const initFormValidation = () => {
   if (!form || !hashtagsInput || !descriptionInput) {
     return;
   }
@@ -92,6 +87,6 @@ function initFormValidation() {
     validateComment,
     `Длина комментария не должна превышать ${MAX_COMMENT_LENGTH} символов`
   );
-}
+};
 
 export { pristine, initFormValidation };

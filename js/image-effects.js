@@ -87,11 +87,9 @@ const updateSlider = () => {
 
 const onSliderUpdate = () => {
   const sliderValue = sliderElement.noUiSlider.get();
-  if (isDefault()) {
-    imageElement.style.filter = DEFAULT_EFFECT.style;
-  } else {
-    imageElement.style.filter = `${chosenEffect.style}(${sliderValue}${chosenEffect.unit})`;
-  }
+  imageElement.style.filter = isDefault()
+    ? DEFAULT_EFFECT.style
+    : `${chosenEffect.style}(${sliderValue}${chosenEffect.unit})`;
   effectLevelElement.value = parseFloat(sliderValue);
 };
 
